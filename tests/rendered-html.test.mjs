@@ -85,9 +85,9 @@ test("keeps the interactive surfaces wired", async () => {
   assert.match(selectionChat, /Explain/);
   assert.match(selectionChat, /\/api\/explain/);
   assert.match(explainRoute, /OPENAI_API_KEY/);
-  assert.match(explainRoute, /EXPLAIN_CHAT_MOCK/);
-  assert.match(explainRoute, /gpt-5-mini/);
+  assert.match(explainRoute, /gpt-4o-mini/);
   assert.match(explainRoute, /https:\/\/api\.openai\.com\/v1\/responses/);
+  assert.doesNotMatch(explainRoute, /mock/i);
   assert.match(layout, /Baton Rouge Civic Map/);
   assert.match(css, /\.control-panel/);
   assert.match(css, /\.focus-panel/);

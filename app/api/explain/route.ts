@@ -37,6 +37,38 @@ function extractOutputText(payload: unknown) {
     return payload.output_text.trim();
   }
 
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "output" in payload &&
+    Array.isArray(payload.output)
+  ) {
+    return payload.output
+      .flatMap((item) => {
+        if (
+          !item ||
+          typeof item !== "object" ||
+          !("content" in item) ||
+          !Array.isArray(item.content)
+        ) {
+          return [];
+        }
+
+        return item.content
+          .map((content) =>
+            content &&
+            typeof content === "object" &&
+            "text" in content &&
+            typeof content.text === "string"
+              ? content.text
+              : "",
+          )
+          .filter(Boolean);
+      })
+      .join("\n")
+      .trim();
+  }
+
   return "";
 }
 
@@ -56,16 +88,6 @@ function extractApiError(payload: unknown) {
   }
 
   return { code: "", message: "" };
-}
-
-function mockExplanation(selectedText: string) {
-  const subject = selectedText || "the selected text";
-
-  return [
-    `Mock explanation for "${subject}":`,
-    "In this civic map, this is a government term or office grouping that helps show where responsibility sits in East Baton Rouge Parish.",
-    "When the hosted OpenAI API key has active quota, this same panel will return live model explanations and answer follow-up questions.",
-  ].join("\n\n");
 }
 
 function json(data: unknown, init?: ResponseInit) {
@@ -89,10 +111,6 @@ export async function POST(request: Request) {
 
   if (!selectedText && messages.length === 0) {
     return json({ message: "Highlight text first, then choose Explain." });
-  }
-
-  if (process.env.EXPLAIN_CHAT_MOCK === "true") {
-    return json({ message: mockExplanation(selectedText) });
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -124,7 +142,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       input: prompt,
       max_output_tokens: 450,
-      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
     }),
     headers: {
       Authorization: `Bearer ${apiKey}`,
