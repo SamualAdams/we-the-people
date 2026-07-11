@@ -45,20 +45,32 @@ test("server-renders the Baton Rouge civic map", async () => {
   assert.match(html, /Mayor-President \*/);
   assert.match(html, /Metropolitan Council \*/);
   assert.match(html, /Municipal Fire &amp; Police Civil Service Board \*\*/);
+  assert.match(html, /Search offices/);
+  assert.match(html, /Police, council, assessor/);
+  assert.match(html, /Focused view/);
+  assert.match(html, /Reset map/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|SkeletonPreview/);
 });
 
 test("removes the starter preview surface", async () => {
-  const [page, layout, css, packageJson] = await Promise.all([
+  const [page, civicMap, civicData, layout, css, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/CivicMap.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/civic-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /Baton Rouge Civic Map/);
-  assert.match(page, /branches:\s*Branch\[\]/);
+  assert.match(page, /<CivicMap branches=\{branches\}/);
+  assert.match(civicMap, /"use client"/);
+  assert.match(civicMap, /useState<BranchId \| null>/);
+  assert.match(civicMap, /Search offices/);
+  assert.match(civicMap, /aria-pressed/);
+  assert.match(civicData, /branches:\s*Branch\[\]/);
   assert.match(layout, /Baton Rouge Civic Map/);
+  assert.match(css, /\.control-panel/);
+  assert.match(css, /\.focus-panel/);
   assert.match(css, /\.map-canvas/);
   assert.match(css, /\.branch-grid::before/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview|_sites-preview/);
