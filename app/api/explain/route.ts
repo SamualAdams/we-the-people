@@ -1,3 +1,5 @@
+import { saveExplanationExchange } from "./storage";
+
 type ExplainMessage = {
   role: "assistant" | "user";
   content: string;
@@ -6,6 +8,8 @@ type ExplainMessage = {
 const maxSelectedTextLength = 1200;
 const maxMessageLength = 1600;
 const maxMessages = 12;
+const maxPagePathLength = 240;
+const storageTimeoutMs = 1800;
 
 function clampText(value: unknown, maxLength: number) {
   return typeof value === "string"
@@ -25,6 +29,27 @@ function cleanMessages(value: unknown): ExplainMessage[] {
       content: clampText(message?.content, maxMessageLength),
     }))
     .filter((message) => message.content.length > 0);
+}
+
+function createThreadId() {
+  return crypto.randomUUID();
+}
+
+function cleanThreadId(value: unknown) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{8,80}$/.test(value)
+    ? value
+    : "";
+}
+
+function latestUserMessage(messages: ExplainMessage[], selectedText: string) {
+  const latest = [...messages]
+    .reverse()
+    .find((message) => message.role === "user");
+
+  return (
+    latest?.content ||
+    (selectedText ? `Explain: "${selectedText}"` : "Asked about this page.")
+  );
 }
 
 function extractOutputText(payload: unknown) {
@@ -94,6 +119,40 @@ function json(data: unknown, init?: ResponseInit) {
   return Response.json(data, init);
 }
 
+async function persistWithTimeout({
+  assistantMessage,
+  pagePath,
+  selectedText,
+  threadId,
+  userMessage,
+}: {
+  assistantMessage: string;
+  pagePath: string;
+  selectedText: string;
+  threadId: string;
+  userMessage: string;
+}) {
+  try {
+    return await Promise.race([
+      saveExplanationExchange({
+        assistantMessage,
+        pagePath,
+        selectedText,
+        threadId,
+        userMessage,
+      }),
+      new Promise<{ persisted: boolean; threadId: string }>((resolve) => {
+        setTimeout(
+          () => resolve({ persisted: false, threadId }),
+          storageTimeoutMs,
+        );
+      }),
+    ]);
+  } catch {
+    return { persisted: false, threadId };
+  }
+}
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -108,6 +167,11 @@ export async function POST(request: Request) {
     maxSelectedTextLength,
   );
   const messages = cleanMessages((body as { messages?: unknown }).messages);
+  const threadId =
+    cleanThreadId((body as { threadId?: unknown }).threadId) || createThreadId();
+  const pagePath =
+    clampText((body as { pagePath?: unknown }).pagePath, maxPagePathLength) ||
+    "/";
 
   if (!selectedText && messages.length === 0) {
     return json({ message: "Highlight text first, then choose Explain." });
@@ -172,9 +236,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const assistantMessage =
+    extractOutputText(payload) ||
+    "I could not turn the model response into readable text.";
+  const storage = await persistWithTimeout({
+    assistantMessage,
+    pagePath,
+    selectedText,
+    threadId,
+    userMessage: latestUserMessage(messages, selectedText),
+  });
+
   return json({
-    message:
-      extractOutputText(payload) ||
-      "I could not turn the model response into readable text.",
+    message: assistantMessage,
+    persisted: storage.persisted,
+    threadId: storage.threadId,
   });
 }

@@ -60,6 +60,8 @@ test("keeps the interactive surfaces wired", async () => {
     civicData,
     selectionChat,
     explainRoute,
+    explainStorage,
+    envExample,
     layout,
     css,
     packageJson,
@@ -69,6 +71,8 @@ test("keeps the interactive surfaces wired", async () => {
     readFile(new URL("../app/civic-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/SelectionExplainChat.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/explain/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/explain/storage.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -84,10 +88,20 @@ test("keeps the interactive surfaces wired", async () => {
   assert.match(selectionChat, /getSelectionState/);
   assert.match(selectionChat, /Explain/);
   assert.match(selectionChat, /\/api\/explain/);
+  assert.match(selectionChat, /threadId/);
   assert.match(explainRoute, /OPENAI_API_KEY/);
   assert.match(explainRoute, /gpt-4o-mini/);
   assert.match(explainRoute, /https:\/\/api\.openai\.com\/v1\/responses/);
+  assert.match(explainRoute, /saveExplanationExchange/);
+  assert.match(explainRoute, /persisted/);
+  assert.match(explainStorage, /DATABASE_URL/);
+  assert.match(explainStorage, /DATABRICKS_LAKEBASE_OAUTH_TOKEN/);
+  assert.match(explainStorage, /CREATE TABLE IF NOT EXISTS civic_explain_threads/);
+  assert.match(explainStorage, /CREATE TABLE IF NOT EXISTS civic_explain_messages/);
+  assert.match(envExample, /DATABASE_URL=/);
+  assert.match(envExample, /DATABASE_PASSWORD=/);
   assert.doesNotMatch(explainRoute, /mock/i);
+  assert.match(packageJson, /"pg"/);
   assert.match(layout, /Baton Rouge Civic Map/);
   assert.match(css, /\.control-panel/);
   assert.match(css, /\.focus-panel/);

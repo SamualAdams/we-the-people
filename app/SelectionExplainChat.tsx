@@ -73,6 +73,7 @@ export function SelectionExplainChat() {
   const [input, setInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [threadId, setThreadId] = useState("");
   const [copyLabel, setCopyLabel] = useState("Copy");
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -125,6 +126,8 @@ export function SelectionExplainChat() {
       const response = await fetch("/api/explain", {
         body: JSON.stringify({
           selectedText,
+          pagePath: window.location.pathname,
+          threadId,
           messages: nextMessages.map(({ role, content }) => ({
             role,
             content,
@@ -136,7 +139,14 @@ export function SelectionExplainChat() {
         method: "POST",
       });
 
-      const payload = (await response.json()) as { message?: string };
+      const payload = (await response.json()) as {
+        message?: string;
+        threadId?: string;
+      };
+      if (payload.threadId) {
+        setThreadId(payload.threadId);
+      }
+
       const content =
         payload.message ??
         "I could not get an explanation back. Try again in a moment.";
