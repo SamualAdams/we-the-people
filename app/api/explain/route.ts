@@ -1,0 +1,120 @@
+type ExplainMessage = {
+  role: "assistant" | "user";
+  content: string;
+};
+
+const maxSelectedTextLength = 1200;
+const maxMessageLength = 1600;
+const maxMessages = 12;
+
+function clampText(value: unknown, maxLength: number) {
+  return typeof value === "string"
+    ? value.replace(/\s+/g, " ").trim().slice(0, maxLength)
+    : "";
+}
+
+function cleanMessages(value: unknown): ExplainMessage[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(-maxMessages)
+    .map((message) => ({
+      role: message?.role === "assistant" ? "assistant" : "user",
+      content: clampText(message?.content, maxMessageLength),
+    }))
+    .filter((message) => message.content.length > 0);
+}
+
+function extractOutputText(payload: unknown) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "output_text" in payload &&
+    typeof payload.output_text === "string"
+  ) {
+    return payload.output_text.trim();
+  }
+
+  return "";
+}
+
+function json(data: unknown, init?: ResponseInit) {
+  return Response.json(data, init);
+}
+
+export async function POST(request: Request) {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return json({ message: "Send selected text to explain." }, { status: 400 });
+  }
+
+  const selectedText = clampText(
+    (body as { selectedText?: unknown }).selectedText,
+    maxSelectedTextLength,
+  );
+  const messages = cleanMessages((body as { messages?: unknown }).messages);
+
+  if (!selectedText && messages.length === 0) {
+    return json({ message: "Highlight text first, then choose Explain." });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return json(
+      {
+        message:
+          "The explanation chat is wired up, but the site does not have an OpenAI API key configured yet. Add OPENAI_API_KEY in the hosted environment to enable model responses.",
+      },
+      { status: 503 },
+    );
+  }
+
+  const conversation = messages
+    .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
+    .join("\n\n");
+  const prompt = [
+    "You explain Baton Rouge and East Baton Rouge Parish local-government terms in plain English.",
+    "Be concise, concrete, and helpful for a resident who is trying to understand the civic map.",
+    "Do not claim live authority, current office holders, or legal advice. If the highlighted text is ambiguous, say what it likely means in this civic-map context.",
+    "",
+    `Highlighted text: ${selectedText || "No current selection"}`,
+    "",
+    "Conversation:",
+    conversation || "USER: Explain the highlighted text.",
+  ].join("\n");
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    body: JSON.stringify({
+      input: prompt,
+      max_output_tokens: 450,
+      model: process.env.OPENAI_MODEL ?? "gpt-5.4-mini",
+    }),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    return json(
+      {
+        message:
+          "The model request failed. Check the hosted OpenAI API key and model setting, then try again.",
+      },
+      { status: response.status },
+    );
+  }
+
+  return json({
+    message:
+      extractOutputText(payload) ||
+      "I could not turn the model response into readable text.",
+  });
+}
