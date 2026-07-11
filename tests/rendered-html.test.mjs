@@ -49,14 +49,30 @@ test("server-renders the Baton Rouge civic map", async () => {
   assert.match(html, /Police, council, assessor/);
   assert.match(html, /Focused view/);
   assert.match(html, /Reset map/);
+  assert.match(html, /data-selection-assistant/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|SkeletonPreview/);
 });
 
-test("removes the starter preview surface", async () => {
-  const [page, civicMap, civicData, layout, css, packageJson] = await Promise.all([
+test("keeps the interactive surfaces wired", async () => {
+  const [
+    page,
+    civicMap,
+    civicData,
+    selectionChat,
+    explainRoute,
+    explainStorage,
+    envExample,
+    layout,
+    css,
+    packageJson,
+  ] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/CivicMap.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/civic-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/SelectionExplainChat.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/explain/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/explain/storage.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -65,12 +81,38 @@ test("removes the starter preview surface", async () => {
   assert.match(page, /<CivicMap branches=\{branches\}/);
   assert.match(civicMap, /"use client"/);
   assert.match(civicMap, /useState<BranchId \| null>/);
+  assert.match(civicMap, /<SelectionExplainChat \/>/);
   assert.match(civicMap, /Search offices/);
   assert.match(civicMap, /aria-pressed/);
   assert.match(civicData, /branches:\s*Branch\[\]/);
+  assert.match(selectionChat, /getSelectionState/);
+  assert.match(selectionChat, /Explain/);
+  assert.match(selectionChat, /\/api\/explain/);
+  assert.match(selectionChat, /threadId/);
+  assert.match(explainRoute, /OPENAI_API_KEY/);
+  assert.match(explainRoute, /gpt-4o-mini/);
+  assert.match(explainRoute, /https:\/\/api\.openai\.com\/v1\/responses/);
+  assert.match(explainRoute, /saveExplanationExchange/);
+  assert.match(explainRoute, /persisted/);
+  assert.match(explainStorage, /DATABASE_URL/);
+  assert.match(explainStorage, /DATABRICKS_CLIENT_ID/);
+  assert.match(explainStorage, /DATABRICKS_CLIENT_SECRET/);
+  assert.match(explainStorage, /DATABRICKS_LAKEBASE_ENDPOINT_NAME/);
+  assert.match(explainStorage, /DATABRICKS_LAKEBASE_OAUTH_TOKEN/);
+  assert.match(explainStorage, /api\/2\.0\/postgres\/credentials/);
+  assert.match(explainStorage, /resolveDatabasePassword/);
+  assert.match(explainStorage, /CREATE TABLE IF NOT EXISTS civic_explain_threads/);
+  assert.match(explainStorage, /CREATE TABLE IF NOT EXISTS civic_explain_messages/);
+  assert.match(envExample, /DATABASE_URL=/);
+  assert.match(envExample, /DATABASE_PASSWORD=/);
+  assert.match(envExample, /DATABRICKS_CLIENT_SECRET=/);
+  assert.doesNotMatch(explainRoute, /mock/i);
+  assert.match(packageJson, /"pg"/);
   assert.match(layout, /Baton Rouge Civic Map/);
   assert.match(css, /\.control-panel/);
   assert.match(css, /\.focus-panel/);
+  assert.match(css, /\.selection-toolbar/);
+  assert.match(css, /\.explain-chat/);
   assert.match(css, /\.map-canvas/);
   assert.match(css, /\.branch-grid::before/);
   assert.doesNotMatch(page, /codex-preview|SkeletonPreview|_sites-preview/);

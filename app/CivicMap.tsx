@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Branch, BranchId, Division } from "./civic-data";
+import { SelectionExplainChat } from "./SelectionExplainChat";
 
 type FilterId = BranchId | "all";
 
@@ -288,6 +289,8 @@ export function CivicMap({ branches }: { branches: Branch[] }) {
           <span>** State statutorily defined offices/funds</span>
         </aside>
       </section>
+
+      <SelectionExplainChat />
     </main>
   );
 }
