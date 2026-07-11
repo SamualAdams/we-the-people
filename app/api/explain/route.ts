@@ -40,6 +40,34 @@ function extractOutputText(payload: unknown) {
   return "";
 }
 
+function extractApiError(payload: unknown) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "error" in payload &&
+    payload.error &&
+    typeof payload.error === "object"
+  ) {
+    const error = payload.error as { code?: unknown; message?: unknown };
+    return {
+      code: typeof error.code === "string" ? error.code : "",
+      message: typeof error.message === "string" ? error.message : "",
+    };
+  }
+
+  return { code: "", message: "" };
+}
+
+function mockExplanation(selectedText: string) {
+  const subject = selectedText || "the selected text";
+
+  return [
+    `Mock explanation for "${subject}":`,
+    "In this civic map, this is a government term or office grouping that helps show where responsibility sits in East Baton Rouge Parish.",
+    "When the hosted OpenAI API key has active quota, this same panel will return live model explanations and answer follow-up questions.",
+  ].join("\n\n");
+}
+
 function json(data: unknown, init?: ResponseInit) {
   return Response.json(data, init);
 }
@@ -61,6 +89,10 @@ export async function POST(request: Request) {
 
   if (!selectedText && messages.length === 0) {
     return json({ message: "Highlight text first, then choose Explain." });
+  }
+
+  if (process.env.EXPLAIN_CHAT_MOCK === "true") {
+    return json({ message: mockExplanation(selectedText) });
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -92,7 +124,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       input: prompt,
       max_output_tokens: 450,
-      model: process.env.OPENAI_MODEL ?? "gpt-5.4-mini",
+      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
     }),
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -103,10 +135,20 @@ export async function POST(request: Request) {
 
   const payload = await response.json();
   if (!response.ok) {
+    const apiError = extractApiError(payload);
+    const message =
+      apiError.code === "insufficient_quota"
+        ? "The OpenAI API key is valid, but the account has no available quota. Add billing or use a key with quota, then try again."
+        : apiError.code === "model_not_found"
+          ? "The configured model is not available to this API key. Set OPENAI_MODEL to a model this project can use, such as gpt-5-mini."
+          : apiError.code === "invalid_api_key"
+            ? "The hosted OpenAI API key was rejected. Check OPENAI_API_KEY and try again."
+            : apiError.message ||
+              "The model request failed. Check the hosted OpenAI API key and model setting, then try again.";
+
     return json(
       {
-        message:
-          "The model request failed. Check the hosted OpenAI API key and model setting, then try again.",
+        message,
       },
       { status: response.status },
     );
