@@ -9,7 +9,7 @@ const maxSelectedTextLength = 1200;
 const maxMessageLength = 1600;
 const maxMessages = 12;
 const maxPagePathLength = 240;
-const storageTimeoutMs = 1800;
+const storageTimeoutMs = 5000;
 
 function clampText(value: unknown, maxLength: number) {
   return typeof value === "string"

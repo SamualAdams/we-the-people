@@ -95,11 +95,17 @@ test("keeps the interactive surfaces wired", async () => {
   assert.match(explainRoute, /saveExplanationExchange/);
   assert.match(explainRoute, /persisted/);
   assert.match(explainStorage, /DATABASE_URL/);
+  assert.match(explainStorage, /DATABRICKS_CLIENT_ID/);
+  assert.match(explainStorage, /DATABRICKS_CLIENT_SECRET/);
+  assert.match(explainStorage, /DATABRICKS_LAKEBASE_ENDPOINT_NAME/);
   assert.match(explainStorage, /DATABRICKS_LAKEBASE_OAUTH_TOKEN/);
+  assert.match(explainStorage, /api\/2\.0\/postgres\/credentials/);
+  assert.match(explainStorage, /resolveDatabasePassword/);
   assert.match(explainStorage, /CREATE TABLE IF NOT EXISTS civic_explain_threads/);
   assert.match(explainStorage, /CREATE TABLE IF NOT EXISTS civic_explain_messages/);
   assert.match(envExample, /DATABASE_URL=/);
   assert.match(envExample, /DATABASE_PASSWORD=/);
+  assert.match(envExample, /DATABRICKS_CLIENT_SECRET=/);
   assert.doesNotMatch(explainRoute, /mock/i);
   assert.match(packageJson, /"pg"/);
   assert.match(layout, /Baton Rouge Civic Map/);
